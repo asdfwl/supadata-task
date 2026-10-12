@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>任务管理器</title>
+    <style>
+        body {max-width:800px;margin:30px auto;padding:0 20px;font-family:system-ui;}
+        .task-item {border:1px solid #ddd; padding:12px; margin:8px 0;border-radius:8px;}
+        .done {background:#e8f5e9;text-decoration: line-through;color:#666;}
+        button {cursor:pointer;padding:6px 10px;margin:0 4px;}
+        input,textarea {width:100%;margin:6px 0;padding:8px;box-sizing:border-box;}
+    </style>
+</head>
+<body>
+    <h1>📝 任务管理器</h1>
+    <div>
+        <h3>新建任务</h3>
+        <input type="text" id="title" placeholder="任务标题">
+        <textarea id="desc" placeholder="任务描述"></textarea>
+        <button onclick="addTask()">添加任务</button>
+    </div>
+    <hr>
+    <h3>任务列表</h3>
+    <div id="taskList"></div>
+
+<script>
+// 加载任务
+async function loadTasks(){
+    const res = await fetch('/api/tasks');
+    const json = await res.json();
+    const listEl = document.getElementById('taskList');
+    listEl.innerHTML = '';
+    if(!json.data) return;
+    json.data.forEach(task=>{
+        const div = document.createElement('div');
+        div.className = `task-item ${task.is_completed ? 'done':''}`;
+        div.innerHTML = `
+            <strong>${task.task_title}</strong>
+            <p>${task.task_desc || '无描述'}</p>
+            <small>${new Date(task.created_at).toLocaleString()}</small>
+            <br>
+            <button onclick="toggleTask(${task.id}, ${!task.is_completed})">完成切换</button>
+            <button onclick="delTask(${task.id})">删除</button>
+        `;
+        listEl.appendChild(div);
+    })
+}
+
+//新增
+async function addTask(){
+    const title = document.getElementById('title').value;
+    const desc = document.getElementById('desc').value;
+    await fetch('/api/tasks',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({task_title:title,task_desc:desc})
+    })
+    loadTasks();
+    document.getElementById('title').value = '';
+    document.getElementById('desc').value = '';
+}
+
+//切换完成状态
+async function toggleTask(id, status){
+    await fetch(`/api/tasks/${id}`,{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({is_completed:status})
+    })
+    loadTasks();
+}
+
+//删除
+async function delTask(id){
+    if(!confirm("确定删除这条任务？")) return;
+    await fetch(`/api/tasks/${id}`,{method:'DELETE'});
+    loadTasks();
+}
+
+window.onload = loadTasks;
+</script>
+</body>
+</html>
